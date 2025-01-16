@@ -1,6 +1,12 @@
 import tkinter as tk
 import time
+import os
+import serial
 from config import DASHBOARD_CLASSES
+
+def is_consult_connected():
+    """Check if the Nissan Consult cable is connected."""
+    return os.path.exists('/dev/ttyUSB0')
 
 class ECUApp(tk.Tk):
     def __init__(self, data_source):
@@ -102,8 +108,21 @@ class ECUApp(tk.Tk):
         self.after(100, self.update_data)
 
 if __name__ == "__main__":
-    from dev_mode import DevModeDataSource
-    data_source = DevModeDataSource()
+    if is_consult_connected():
+        try:
+            serial.Serial('/dev/ttyUSB0', baudrate=9600, timeout=1)
+            from real_mode import RealModeDataSource  # Replace with your actual data source
+            data_source = RealModeDataSource()
+            print("Nissan Consult detected. Running in real mode.")
+        except Exception as e:
+            print(f"Error connecting to ECU: {e}")
+            from dev_mode import DevModeDataSource
+            data_source = DevModeDataSource()
+            print("Falling back to dev mode due to connection error.")
+    else:
+        from dev_mode import DevModeDataSource
+        data_source = DevModeDataSource()
+        print("Nissan Consult not detected. Running in dev mode.")
 
     app = ECUApp(data_source)
     app.mainloop()
